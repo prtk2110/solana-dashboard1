@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Solana Breakout Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; padding: 20px; }
+    h1 { text-align: center; color: #00ffcc; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
+    th { background: #222; color: #00ffcc; }
+    tr:hover { background: #222; }
+    a { color: #00ccff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>🚀 Solana Breakout Dashboard</h1>
+  <p>Auto-refresh every 10 minutes. Tracking volume spikes & 5m moves.</p>
+
+  <table id="tokenTable">
+    <thead>
+      <tr>
+        <th>Token</th>
+        <th>Pair</th>
+        <th>Price</th>
+        <th>24h Volume</th>
+        <th>5m Change</th>
+        <th>Chart</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    async function fetchData() {
+      const url = "https://api.allorigins.win/raw?url=https://api.dexscreener.com/latest/dex/pairs/solana";
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const pairs = data.pairs || [];
+
+        // Filter tokens: 24h volume > $50k & 5m price change >1%
+        const filtered = pairs.filter(p => {
+          return (
+            p.volume?.h24 > 50000 &&
+            Math.abs(p.priceChange?.m5 || 0) > 1
+          );
+        });
+
+        const tableBody = document.querySelector("#tokenTable tbody");
+        tableBody.innerHTML = "";
+
+        if (filtered.length === 0) {
+          tableBody.innerHTML = `<tr><td colspan="6">No breakout tokens right now</td></tr>`;
+        } else {
+          filtered.slice(0, 20).forEach(p => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${p.baseToken?.name || "Unknown"} (${p.baseToken?.symbol || "?"})</td>
+              <td>${p.pairAddress?.slice(0,6)}...</td>
+              <td>$${parseFloat(p.priceUsd).toFixed(6)}</td>
+              <td>$${Number(p.volume?.h24).toLocaleString()}</td>
+              <td style="color:${p.priceChange.m5 > 0 ? 'lime' : 'red'}">
+                ${p.priceChange.m5?.toFixed(2)}%
+              </td>
+              <td><a href="https://dexscreener.com/solana/${p.pairAddress}" target="_blank">Chart</a></td>
+            `;
+            tableBody.appendChild(row);
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        document.querySelector("#tokenTable tbody").innerHTML =
+          `<tr><td colspan="6">⚠️ Error loading data</td></tr>`;
+      }
+    }
+
+    fetchData();
+    setInterval(fetchData, 10 * 60 * 1000); // refresh every 10 minutes
+  </script>
+</body>
+</html>
